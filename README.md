@@ -1,4 +1,8 @@
 # UnmannedVehicle
+## 设置bash
+```
+export LD_LIBRARY_PATH=~/mavlink/build/lib:~/ouster_client/build/lib:
+```
 ## 打开底盘
 运行
 ```
