@@ -3,6 +3,12 @@
 ```
 export LD_LIBRARY_PATH=~/mavlink/build/lib:~/ouster_client/build/lib:
 ```
+## 依赖
+```
+sudo apt-get install ros-foxy-ecl-*
+sudo apt install ros-foxy-nav2-*
+sudo apt install ros-foxy-joint-state-publisher
+```
 ## 打开底盘
 运行
 ```
