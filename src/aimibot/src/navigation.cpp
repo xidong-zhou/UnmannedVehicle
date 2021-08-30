@@ -10,26 +10,35 @@ using namespace std;
 rclcpp::Node::SharedPtr nh; 
 rclcpp::Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr path_pub;
 bool flag_next = false;   
-bool flag_new = true;
-bool flag_stop = false;
+bool flag_new = false;
+bool flag_done = true;
 int num = 0, i = 0;
 
 float x[] = {1.0,2.0,3.0};
 float y[] = {0.0,0.0,0.0};
 float goal_x, goal_y;
+float init_x = 0.0 ,init_y = 0.0;
+
+void initCallback(const geometry_msgs::msg::PoseStamped::SharedPtr msg)
+{
+	init_x = msg->pose.position.x;
+	init_y = msg->pose.position.y;	
+}
 
 
 void pathCallback(const nav_msgs::msg::Path::SharedPtr msg) 
-{
-    
+{    
     RCLCPP_INFO(nh->get_logger(), "%d",msg->poses.size());
     num = msg->poses.size();
-    
-    goal_x = msg->poses[i].pose.position.x;
-    goal_y = msg->poses[i].pose.position.y;
-    
+    for(int n=0;n<=num;n++)
+    {
+		x[n] = msg->poses[n].pose.position.x + init_x;
+		y[n] = msg->poses[n].pose.position.y + init_y;
+	}
+    flag_done = false;
     flag_new = true;
 }
+
 
 void odomCallback(const nav_msgs::msg::Odometry::SharedPtr msg) 
 {
@@ -39,8 +48,8 @@ void odomCallback(const nav_msgs::msg::Odometry::SharedPtr msg)
     static geometry_msgs::msg::PoseStamped goal;
     if(flag_new)
     {
-    	goal_x = x[i];
-    	goal_y = y[i];
+    	goal_x = x[i] - init_x;
+    	goal_y = y[i] - init_y;
     	flag_next = false;
     	
 		
@@ -72,13 +81,13 @@ void odomCallback(const nav_msgs::msg::Odometry::SharedPtr msg)
 		path_pub->publish(goal);
     }    
     
-    else if(!flag_new & !flag_next & !flag_stop)
+    else if(!flag_new & !flag_next & !flag_done)
     {
     	if((abs(x[i-1] - now_x) < 0.35 && abs(y[i-1] - now_y) < 0.35))
     	{
     	//RCLCPP_INFO(nh->get_logger(), "goal_x:%f,goal_y:%f",goal.pose.position.x,goal.pose.position.y);
 	    	path_pub->publish(goal);
-	    	}
+	    }
 	    if(abs(goal_x - now_x) < 0.35 && abs(goal_y - now_y) < 0.35)
 		{
 			RCLCPP_INFO(nh->get_logger(), "goal_x:%f,goal_y:%f",goal_x,goal_y);
@@ -90,15 +99,10 @@ void odomCallback(const nav_msgs::msg::Odometry::SharedPtr msg)
     	    {
 			    flag_new = false;
 			    flag_next = false;
-			    flag_stop = true;    	    	
+			    flag_done = true;    	    	
     	    }
-    	}
-    	
-    	
+    	}    	
     }
-    
-    
-
 }
 
 int main(int argc, char **argv) {
@@ -108,17 +112,18 @@ int main(int argc, char **argv) {
     rclcpp::Clock clock;
     rclcpp::Subscription<nav_msgs::msg::Path>::SharedPtr path_sub;
     rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odom_sub;
-     
+    rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr init_sub;
+    
+    
     path_pub = nh->create_publisher<geometry_msgs::msg::PoseStamped>("goal",100);
     
+    init_sub = nh->create_subscription<geometry_msgs::msg::PoseStamped>("init_utm",10,initCallback); 
     odom_sub = nh->create_subscription<nav_msgs::msg::Odometry>("odom",1,odomCallback);
     path_sub = nh->create_subscription<nav_msgs::msg::Path>("shortest_path",1,pathCallback);
     num = sizeof(x) / sizeof(x[0]);
     while(rclcpp::ok())
     {
-    
-    	
-	rclcpp::spin_some(nh);
+    	rclcpp::spin_some(nh);
     }
 
     return 0;
